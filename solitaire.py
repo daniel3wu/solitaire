@@ -1,4 +1,5 @@
 import random
+BREAK_STRING = "-------------------------------------------------------------------"
 
 class Card():
     card_to_name = {1:"A", 2:"2", 3:"3", 4:"4", 5:"5", 6:"6", 7:"7",
@@ -14,10 +15,10 @@ class Card():
     	return self.value == (card.value + 1)
 
     def oppositeSuit(self, card):
-    	if self.suit == "c" or self.suit == "s":
-    		return card.suit == "h" or cards.suit == "d"
+    	if self.suit == "club" or self.suit == "spade":
+    		return card.suit == "heart" or cards.suit == "diam"
     	else:
-    		return card.suit == "s" or cards.suit == "c"
+    		return card.suit == "spade" or cards.suit == "club"
 
     def canAttach(self, card):
    		if card.isBelow(self) and card.oppositeSuit(self):
@@ -43,13 +44,23 @@ class Deck():
 		
 class Tableau():
 	# Seven piles
-	def __init__(self, deck):
-		self.hi = "hi"
+
+	def __init__(self, card_list):
+		self.piles = {x: card_list[x] for x in range(7)}
+		self.revealed = {x: [self.piles[x].pop()] for x in range(7)}
 
 	def attach_card(self, column, card):
 		return -1
-	def flip_card(self, column, card):
-		return -1
+
+	def flip_card(self, col, card):
+		self.revealed[col].append(self.piles[col].pop())
+
+	def pile_length(self):
+		list_lens = [len(self.revealed[x]) + len(self.piles[x]) for x in range(7)]
+		return max(list_lens)
+
+	def __repr__(self):
+		return str(self.piles)
 
 class StockWaste():
 	waste = []
@@ -59,10 +70,16 @@ class StockWaste():
 		random.shuffle(self.deck)
 
 	def flip_card(self):
+		""" Move a card from the Stock pile to the Waste pile """
+		if len(self.deck) == 0:
+			# Reset the stock and waste after the stock runs dry
+			self.waste.reverse()
+			self.deck = self.waste.copy()
+			self.waste.clear()
 		self.waste.append(self.deck.pop())
 
-	def move_card(self, other_pile):
-		other_pile.attachCard(waste.pop())
+	def remove_card(self):
+		return self.waste.pop()
 
 	def showWaste(self):
 		if len(self.waste) > 0:
@@ -72,55 +89,81 @@ class StockWaste():
 
 	def showStock(self):
 		if len(self.deck) > 0:
-			return "X"
+			return str(len(self.deck)) + " card(s)"
 		else:
 			return "empty"
 
 class Foundation():
-	foundation_piles = {"Clubs":[], "Hearts":[], "Spades":[], "Diamonds":[]}
 
 	def __init__(self):
-		self.completed = False
+		self.foundation_piles = {"club":[], "heart":[], "spade":[], "diam":[]}
 
-	def attach_card(self, card):
-		stack = foundation_piles[card.suit]
+	def add(self, card):
+		""" Adds a card to its appropriate pile"""
+		stack = self.foundation_piles[card.suit]
 		if len(stack) == 0 and card.value == 1:
-			foundation_piles[card.suit].append(card)
+			stack.append(card)
 		elif stack[-1].isBelow(card):
-			foundation_piles[card.suit].append(card)
+			stack.append(card)
 		else:
 			print("Error! That card doesn't belong there.")
+
+	def getTopCard(self, suit):
+		"""
+		Return the top card of a foundation pile. If the pile
+		is empty, return the letter of the suit.
+		"""
+		pile = self.foundation_piles[suit]
+		if len(pile) == 0:
+			return suit[0].upper()
+		else:
+			return self.foundation_piles[suit][-1]
 
 def printValidCommands():
 	""" Provides the list of commands, for when users press 'h' """
 	print("Valid Commands: ")
 	print("\tmv - move card from Stock to Waste")
-	print("\twf #F - move card from Waste to Foundation")
+	print("\twf - move card from Waste to Foundation")
 	print("\twt #T - move card from Waste to Tableau")
-	print("\ttf #T #F - move card from Tableau to Foundation")
+	print("\ttf #T - move card from Tableau to Foundation")
 	print("\ttt #T1 #T2 - move card from one Tableau column to another")
 	print("\th - help")
 	print("\tq - quit")
 	print("\t*NOTE: Hearts/diamonds are red. Spades/clubs are black.")
 
-def printTable(stock_waste):
+def printTable(tableau, foundation, stock_waste):
 	""" Prints the current status of the table """
-	print("---------------------------------------------------------------------")
-	print("Waste \t Stock \t\t\t Foundation")
-	print(stock_waste.showWaste(), "\t", stock_waste.showStock(), "\t\t 1 \t 2 \t 3 \t 4")
-	print("\nTableau")
-	print("\t1\t2\t3\t4\t5\t6\t7\n")
-	print("---------------------------------------------------------------------")
+	print(BREAK_STRING)
+	print("Waste \t Stock \t\t\t\t Foundation")
+	print("{}\t{}\t\t{}\t{}\t{}\t{}".format(stock_waste.showWaste(), stock_waste.showStock(), 
+		foundation.getTopCard("club"), foundation.getTopCard("heart"), 
+		foundation.getTopCard("spade"), foundation.getTopCard("diam")))
+	print("\nTableau\n\t1\t2\t3\t4\t5\t6\t7\n")
+	# Print the cards, first printing the un-flipped cards, and then the flipped.
+	for x in range(tableau.pile_length()):
+		print_str = ""
+		for col in range(7):
+			hidden_cards = tableau.piles[col]
+			shown_cards = tableau.revealed[col]
+			if len(hidden_cards) > x:
+				print_str += "\tx"
+			elif len(shown_cards) + len(hidden_cards) > x:
+				print_str += "\t" + str(shown_cards[x-len(hidden_cards)])
+			else:
+				print_str += "\t"
+		print(print_str)
+	print(BREAK_STRING)
 
 if __name__ == "__main__":
     d = Deck()
+    t = Tableau([d.deal_cards(x) for x in range(1,8)])
     f = Foundation()
-    sw = StockWaste(d.deal_cards(14))
+    sw = StockWaste(d.deal_cards(24))
 
-    print("\n-------------------------------------------------------------------")
+    print("\n" + BREAK_STRING)
     print("Welcome to Danny's Solitaire!\n")
     printValidCommands()
-    printTable(sw)
+    printTable(t, f, sw)
     while True:
     	command = input("Enter a command (type 'h' for help): ")
     	command = command.lower()
@@ -132,4 +175,16 @@ if __name__ == "__main__":
     		break
     	elif command == "mv":
     		sw.flip_card()
-    		printTable(sw)
+    		printTable(t, f, sw)
+    	elif command == "wf":
+    		if sw.showWaste() == "empty":
+    			print("Error! There's nothing in the Waste pile.")
+    		else:
+    			f.add(sw.remove_card())
+    			printTable(t, f, sw)
+    	elif "wt" in command:
+    		print("Move card from Waste to tableau")
+    	elif "tf" in command:
+    		print("move card from tableau to foundation")
+    	elif "tt" in command:
+    		print("move card from column to column")
