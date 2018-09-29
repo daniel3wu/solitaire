@@ -102,6 +102,7 @@ class Tableau():
 
 
 class StockWaste():
+	""" A StockWaste object keeps track of the Stock and Waste piles """
 	waste = []
 
 	def __init__(self, cards):
@@ -125,13 +126,14 @@ class StockWaste():
 			print("There are no cards left in the waste pile!")
 
 	def showWaste(self):
-		"""  """
+		""" Shows the bottom card of the Waste pile """
 		if len(self.waste) > 0:
 			return self.waste[-1]
 		else:
 			return "empty"
 
 	def showStock(self):
+		""" Returns a string of the number of cards in the stock """
 		if len(self.deck) > 0:
 			return str(len(self.deck)) + " card(s)"
 		else:
