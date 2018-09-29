@@ -12,17 +12,19 @@ class Card():
         self.value = value
 
     def isBelow(self, card):
-    	return self.value == (card.value + 1)
+    	return self.value == (card.value - 1)
 
-    def oppositeSuit(self, card):
+    def isOppositeSuit(self, card):
     	if self.suit == "club" or self.suit == "spade":
-    		return card.suit == "heart" or cards.suit == "diam"
+    		return card.suit == "heart" or card.suit == "diam"
     	else:
-    		return card.suit == "spade" or cards.suit == "club"
+    		return card.suit == "spade" or card.suit == "club"
 
     def canAttach(self, card):
-   		if card.isBelow(self) and card.oppositeSuit(self):
-   			return True
+    	if card.isBelow(self) and card.isOppositeSuit(self):
+    		return True
+    	else:
+    		return False
 
     def __repr__(self):
         return self.title
@@ -49,11 +51,12 @@ class Tableau():
 		self.piles = {x: card_list[x] for x in range(7)}
 		self.revealed = {x: [self.piles[x].pop()] for x in range(7)}
 
-	def attach_card(self, column, card):
-		return -1
+	def flip_card(self, col):
+		if(len(self.piles[col]) > 0):
+			self.revealed[col].append(self.piles[col].pop())
 
-	def flip_card(self, col, card):
-		self.revealed[col].append(self.piles[col].pop())
+	def addCards(self, column, card_list):
+		self.revealed[column].extend(card_list)
 
 	def pile_length(self):
 		list_lens = [len(self.revealed[x]) + len(self.piles[x]) for x in range(7)]
@@ -62,6 +65,42 @@ class Tableau():
 	def __repr__(self):
 		return str(self.piles)
 
+	def tableau_to_tableau(self, c1, c2):
+		pile1, pile2 = self.revealed[c1], self.revealed[c2]
+		bottom_of_pile2 = pile2[-1]
+		# Goes through the list of revealed cards to see if you can move a stack
+		for index in range(len(pile1)):
+			card = pile1[index]
+			if bottom_of_pile2.canAttach(card):
+				# Add the cards to the column c2, and remove them from c1
+				self.addCards(c2, pile1[index:])
+				self.revealed[c1] = pile1[0:index]
+				if(index == 0):
+					self.flip_card(c1)
+				return
+		print("There are no cards that can be moved.")
+
+	def tableau_to_foundation(self, foundation, column):
+		card_list = self.revealed[column]
+		if(len(card_list) == 0):
+			print("There are no cards in this column!")
+		elif(len(card_list) == 1):
+			foundation.add(card_list.pop())
+			self.flip_card(column)
+		else:
+			foundation.add(card_list.pop())
+
+	def waste_to_tableau(self, waste_pile, column):
+		card = waste_pile.waste[-1]
+		card_list = self.revealed[column]
+		if(len(card_list) == 0 or card_list[-1].canAttach(card)):
+			self.addCards(column, [card])
+			waste_pile.remove_card()
+		else:
+			print("The card in the waste pile cannot be moved to that column.")
+
+
+
 class StockWaste():
 	waste = []
 
@@ -69,7 +108,7 @@ class StockWaste():
 		self.deck = cards
 		random.shuffle(self.deck)
 
-	def flip_card(self):
+	def stock_to_waste(self):
 		""" Move a card from the Stock pile to the Waste pile """
 		if len(self.deck) == 0:
 			# Reset the stock and waste after the stock runs dry
@@ -79,9 +118,14 @@ class StockWaste():
 		self.waste.append(self.deck.pop())
 
 	def remove_card(self):
-		return self.waste.pop()
+		""" Moves a card from the Stock to the Waste """
+		if(len(self.waste) > 0):
+			return self.waste.pop()
+		else:
+			print("There are no cards left in the waste pile!")
 
 	def showWaste(self):
+		"""  """
 		if len(self.waste) > 0:
 			return self.waste[-1]
 		else:
@@ -152,7 +196,7 @@ def printTable(tableau, foundation, stock_waste):
 			else:
 				print_str += "\t"
 		print(print_str)
-	print(BREAK_STRING)
+	print("\n"+BREAK_STRING)
 
 if __name__ == "__main__":
     d = Deck()
@@ -174,7 +218,7 @@ if __name__ == "__main__":
     		print("Game exited.")
     		break
     	elif command == "mv":
-    		sw.flip_card()
+    		sw.stock_to_waste()
     		printTable(t, f, sw)
     	elif command == "wf":
     		if sw.showWaste() == "empty":
@@ -182,9 +226,17 @@ if __name__ == "__main__":
     		else:
     			f.add(sw.remove_card())
     			printTable(t, f, sw)
-    	elif "wt" in command:
-    		print("Move card from Waste to tableau")
-    	elif "tf" in command:
-    		print("move card from tableau to foundation")
-    	elif "tt" in command:
-    		print("move card from column to column")
+    	elif "wt" in command and len(command) == 3:
+    		col = int(command[-1]) - 1
+    		t.waste_to_tableau(sw, col)
+    		printTable(t, f, w)
+    	elif "tf" in command and len(command) == 3:
+    		col = int(command[-1]) - 1
+    		t.tableau_to_foundation(f, col)
+    		printTable(t, f, sw)
+    	elif "tt" in command and len(command) == 4:
+    		c1, c2 = int(command[-2]) - 1, int(command[-1]) - 1
+    		t.tableau_to_tableau(c1, c2)
+    		printTable(t, f, sw)
+    	else:
+    		print("Sorry, that is not a valid command.")
