@@ -26,11 +26,12 @@ class Card():
     	else:
     		return False
 
-    def __repr__(self):
+    def __str__(self):
         return self.title
 
 class Deck():
     unshuffled_deck = [Card(card, suit) for card in range(1, 14) for suit in ["club", "diam", "heart", "spade"]]
+
     def __init__(self, num_decks=1):
         self.deck = self.unshuffled_deck * num_decks
         random.shuffle(self.deck)
@@ -48,40 +49,35 @@ class Tableau():
 	# Seven piles
 
 	def __init__(self, card_list):
-		self.piles = {x: card_list[x] for x in range(7)}
-		self.revealed = {x: [self.piles[x].pop()] for x in range(7)}
+		self.unflipped = {x: card_list[x] for x in range(7)}
+		self.flipped = {x: [self.unflipped[x].pop()] for x in range(7)}
 
 	def flip_card(self, col):
-		if(len(self.piles[col]) > 0):
-			self.revealed[col].append(self.piles[col].pop())
-
-	def addCards(self, column, card_list):
-		self.revealed[column].extend(card_list)
+		if len(self.unflipped[col]) > 0:
+			self.flipped[col].append(self.unflipped[col].pop())
 
 	def pile_length(self):
-		list_lens = [len(self.revealed[x]) + len(self.piles[x]) for x in range(7)]
+		list_lens = [len(self.flipped[x]) + len(self.unflipped[x]) for x in range(7)]
 		return max(list_lens)
 
 	def __repr__(self):
-		return str(self.piles)
+		return str(self.unflipped)
 
 	def tableau_to_tableau(self, c1, c2):
-		pile1, pile2 = self.revealed[c1], self.revealed[c2]
+		pile1, pile2 = self.flipped[c1], self.flipped[c2]
 		bottom_of_pile2 = pile2[-1]
-		# Goes through the list of revealed cards to see if you can move a stack
 		for index in range(len(pile1)):
 			card = pile1[index]
 			if bottom_of_pile2.canAttach(card):
-				# Add the cards to the column c2, and remove them from c1
-				self.addCards(c2, pile1[index:])
-				self.revealed[c1] = pile1[0:index]
+				pile2.extend(pile1[index:])
+				self.flipped[c1] = pile1[0:index]
 				if(index == 0):
 					self.flip_card(c1)
 				return
-		print("There are no cards that can be moved.")
+		print("There are no cards that could be moved.")
 
 	def tableau_to_foundation(self, foundation, column):
-		card_list = self.revealed[column]
+		card_list = self.flipped[column]
 		if(len(card_list) == 0):
 			print("There are no cards in this column!")
 		elif(len(card_list) == 1):
@@ -92,10 +88,10 @@ class Tableau():
 
 	def waste_to_tableau(self, waste_pile, column):
 		card = waste_pile.waste[-1]
-		card_list = self.revealed[column]
+		card_list = self.flipped[column]
 		if(len(card_list) == 0 or card_list[-1].canAttach(card)):
 			self.addCards(column, [card])
-			waste_pile.remove_card()
+			waste_pile.flip_card()
 		else:
 			print("The card in the waste pile cannot be moved to that column.")
 
@@ -118,8 +114,8 @@ class StockWaste():
 			self.waste.clear()
 		self.waste.append(self.deck.pop())
 
-	def remove_card(self):
-		""" Moves a card from the Stock to the Waste """
+	def flip_card(self):
+		""" Flips a card from the Stock to the Waste """
 		if(len(self.waste) > 0):
 			return self.waste.pop()
 		else:
@@ -142,11 +138,11 @@ class StockWaste():
 class Foundation():
 
 	def __init__(self):
-		self.foundation_piles = {"club":[], "heart":[], "spade":[], "diam":[]}
+		self.foundation_stacks = {"club":[], "heart":[], "spade":[], "diam":[]}
 
 	def add(self, card):
 		""" Adds a card to its appropriate pile"""
-		stack = self.foundation_piles[card.suit]
+		stack = self.foundation_stacks[card.suit]
 		if len(stack) == 0 and card.value == 1:
 			stack.append(card)
 		elif stack[-1].isBelow(card):
@@ -159,11 +155,21 @@ class Foundation():
 		Return the top card of a foundation pile. If the pile
 		is empty, return the letter of the suit.
 		"""
-		pile = self.foundation_piles[suit]
-		if len(pile) == 0:
+		stack = self.foundation_stacks[suit]
+		if len(stack) == 0:
 			return suit[0].upper()
 		else:
-			return self.foundation_piles[suit][-1]
+			return self.foundation_stacks[suit][-1]
+
+	def gameWon(self):
+		""" Returns whether the user has won the game. """
+		for suit, stack in self.foundation_stacks.items():
+			if len(stack) == 0:
+				return False
+			card = stack[-1]
+			if card.value != 13:
+				return False
+		return True
 
 def printValidCommands():
 	""" Provides the list of commands, for when users press 'h' """
@@ -185,12 +191,12 @@ def printTable(tableau, foundation, stock_waste):
 		foundation.getTopCard("club"), foundation.getTopCard("heart"), 
 		foundation.getTopCard("spade"), foundation.getTopCard("diam")))
 	print("\nTableau\n\t1\t2\t3\t4\t5\t6\t7\n")
-	# Print the cards, first printing the un-flipped cards, and then the flipped.
+	# Print the cards, first printing the unflipped cards, and then the flipped.
 	for x in range(tableau.pile_length()):
 		print_str = ""
 		for col in range(7):
-			hidden_cards = tableau.piles[col]
-			shown_cards = tableau.revealed[col]
+			hidden_cards = tableau.unflipped[col]
+			shown_cards = tableau.flipped[col]
 			if len(hidden_cards) > x:
 				print_str += "\tx"
 			elif len(shown_cards) + len(hidden_cards) > x:
@@ -210,7 +216,8 @@ if __name__ == "__main__":
     print("Welcome to Danny's Solitaire!\n")
     printValidCommands()
     printTable(t, f, sw)
-    while True:
+
+    while not f.gameWon():
     	command = input("Enter a command (type 'h' for help): ")
     	command = command.lower()
     	command = command.replace(" ", "")
@@ -226,7 +233,7 @@ if __name__ == "__main__":
     		if sw.showWaste() == "empty":
     			print("Error! There's nothing in the Waste pile.")
     		else:
-    			f.add(sw.remove_card())
+    			f.add(sw.flip_card())
     			printTable(t, f, sw)
     	elif "wt" in command and len(command) == 3:
     		col = int(command[-1]) - 1
@@ -242,3 +249,6 @@ if __name__ == "__main__":
     		printTable(t, f, sw)
     	else:
     		print("Sorry, that is not a valid command.")
+
+    if f.gameWon():
+    	print("Congratulations! You've won!")
