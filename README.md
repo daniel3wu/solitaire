@@ -2,6 +2,7 @@
 
 ## Overview
 This is a console-based, unix-compatible Python implementation of the popular card game Solitaire (also known as "Patience").
+To play, simply run the **solitaire.py** file using Python 3.
 
 ## Rules
 This implementation of Solitaire was modeled after the official rules described [here](https://www.bicyclecards.com/how-to-play/solitaire/) by Bicycle Cards.
