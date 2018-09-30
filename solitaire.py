@@ -59,12 +59,11 @@ class Tableau():
 
 	def pile_length(self):
 		""" Returns the length of the longest pile on the Tableau """
-		list_lens = [len(self.flipped[x]) + len(self.unflipped[x]) for x in range(7)]
-		return max(list_lens)
+		return max([len(self.flipped[x]) + len(self.unflipped[x]) for x in range(7)])
 
 	def addCards(self, cards, column):
-		""" Returns true if cards were successfully added to column. 
-		Returns false otherwise"""
+		""" Returns true if cards were successfully added to column on the Tableau. 
+			Returns false otherwise. """
 		column_cards = self.flipped[column]
 		if len(column_cards) == 0 and cards[0].value == 13:
 			column_cards.extend(cards)
@@ -107,7 +106,7 @@ class Tableau():
 			on the Tableau, returns False otherwise. """
 		card = waste_pile.waste[-1]
 		if self.addCards([card], column):
-			waste_pile.flip_card()
+			waste_pile.pop_waste_card()
 			return True
 		else:
 			return False
@@ -134,8 +133,8 @@ class StockWaste():
 		self.waste.append(self.deck.pop())
 		return True
 
-	def flip_card(self):
-		""" Flips a card from the Stock to the Waste """
+	def pop_waste_card(self):
+		""" Removes a card from the Waste pile. """
 		if len(self.waste) > 0:
 			return self.waste.pop()
 
@@ -235,8 +234,7 @@ if __name__ == "__main__":
 
     while not f.gameWon():
     	command = input("Enter a command (type 'h' for help): ")
-    	command = command.lower()
-    	command = command.replace(" ", "")
+    	command = command.lower().replace(" ", "")
     	if command == "h":
     		printValidCommands()
     	elif command == "q":
@@ -247,14 +245,14 @@ if __name__ == "__main__":
     			printTable(t, f, sw)
     	elif command == "wf":
     		if f.addCard(sw.getWaste()):
-    			sw.flip_card()
+    			sw.pop_waste_card()
     			printTable(t, f, sw)
     		else:
     			print("Error! No card could be moved from the Waste to the Foundation.")
     	elif "wt" in command and len(command) == 3:
     		col = int(command[-1]) - 1
     		if t.waste_to_tableau(sw, col):
-    			printTable(t, f, w)
+    			printTable(t, f, sw)
     		else:
     			print("Error! No card could be moved from the Waste to the Tableau column.")
     	elif "tf" in command and len(command) == 3:
