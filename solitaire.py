@@ -53,6 +53,7 @@ class Tableau():
 		self.flipped = {x: [self.unflipped[x].pop()] for x in range(7)}
 
 	def flip_card(self, col):
+		""" Flips a card under column col on the Tableau """
 		if len(self.unflipped[col]) > 0:
 			self.flipped[col].append(self.unflipped[col].pop())
 
@@ -61,76 +62,92 @@ class Tableau():
 		list_lens = [len(self.flipped[x]) + len(self.unflipped[x]) for x in range(7)]
 		return max(list_lens)
 
-	# def __repr__(self):
-	# 	return str(self.unflipped)
+	def addCards(self, cards, column):
+		""" Returns true if cards were successfully added to column. 
+		Returns false otherwise"""
+		column_cards = self.flipped[column]
+		if len(column_cards) == 0 and cards[0].value == 13:
+			column_cards.extend(cards)
+			return True
+		elif len(column_cards) > 0 and column_cards[-1].canAttach(cards[0]):
+			column_cards.extend(cards)
+			return True
+		else:
+			return False
 
 	def tableau_to_tableau(self, c1, c2):
-		""" Swaps card(s) between piles on the Tableau """
-		pile1, pile2 = self.flipped[c1], self.flipped[c2]
-		bottom_of_pile2 = pile2[-1]
-		for index in range(len(pile1)):
-			card = pile1[index]
-			if bottom_of_pile2.canAttach(card):
-				pile2.extend(pile1[index:])
-				self.flipped[c1] = pile1[0:index]
-				if(index == 0):
+		""" Returns True if any card(s) are successfully moved from c1 to c2 on
+			the Tableau, returns False otherwise. """
+		c1_cards = self.flipped[c1]
+
+		for index in range(len(c1_cards)):
+			if self.addCards(c1_cards[index:], c2):
+				self.flipped[c1] = c1_cards[0:index]
+				if index == 0:
 					self.flip_card(c1)
-				return
-		print("There are no cards that could be moved.")
+				return True
+		return False
 
 	def tableau_to_foundation(self, foundation, column):
 		""" Moves a card from the Tableau to the appropriate Foundation pile """
-		card_list = self.flipped[column]
-		if(len(card_list) == 0):
-			print("There are no cards in this column!")
-		elif(len(card_list) == 1):
-			foundation.add(card_list.pop())
-			self.flip_card(column)
+		column_cards = self.flipped[column]
+		if len(column_cards) == 0:
+			return False
+
+		if foundation.addCard(column_cards[-1]):
+			column_cards.pop()
+			if len(column_cards) == 0:
+				self.flip_card(column)
+			return True
 		else:
-			foundation.add(card_list.pop())
+			return False
 
 	def waste_to_tableau(self, waste_pile, column):
+		""" Returns True if a card from the Waste pile is succesfully moved to a column
+			on the Tableau, returns False otherwise. """
 		card = waste_pile.waste[-1]
-		card_list = self.flipped[column]
-		if(len(card_list) == 0 or card_list[-1].canAttach(card)):
-			self.addCards(column, [card])
+		if self.addCards([card], column):
 			waste_pile.flip_card()
+			return True
 		else:
-			print("The card in the waste pile cannot be moved to that column.")
+			return False
 
 class StockWaste():
 	""" A StockWaste object keeps track of the Stock and Waste piles """
-	waste = []
 
 	def __init__(self, cards):
 		self.deck = cards
-		random.shuffle(self.deck)
+		self.waste = []
 
 	def stock_to_waste(self):
-		""" Move a card from the Stock pile to the Waste pile """
+		""" Returns True if a card is sucessfully moved from the Stock pile to the
+			Waste pile, returns False otherwise. """
+		if len(self.deck) + len(self.waste) == 0:
+			print("There are no more cards in the Stock pile!")
+			return False
+
 		if len(self.deck) == 0:
-			# Reset the stock and waste after the stock runs dry
 			self.waste.reverse()
 			self.deck = self.waste.copy()
 			self.waste.clear()
+
 		self.waste.append(self.deck.pop())
+		return True
 
 	def flip_card(self):
 		""" Flips a card from the Stock to the Waste """
-		if(len(self.waste) > 0):
+		if len(self.waste) > 0:
 			return self.waste.pop()
-		else:
-			print("There are no cards left in the waste pile!")
 
-	def showWaste(self):
-		""" Shows the bottom card of the Waste pile """
+	def getWaste(self):
+		""" Retrieves the top card of the Waste pile. """
 		if len(self.waste) > 0:
 			return self.waste[-1]
 		else:
 			return "empty"
 
-	def showStock(self):
-		""" Returns a string of the number of cards in the stock """
+	def getStock(self):
+		""" Returns a string of the number of cards in the stock. """
 		if len(self.deck) > 0:
 			return str(len(self.deck)) + " card(s)"
 		else:
@@ -141,21 +158,19 @@ class Foundation():
 	def __init__(self):
 		self.foundation_stacks = {"club":[], "heart":[], "spade":[], "diam":[]}
 
-	def add(self, card):
-		""" Adds a card to its appropriate pile"""
+	def addCard(self, card):
+		""" Returns True if a card is successfully added to the Foundation,
+			otherwise, returns False. """
 		stack = self.foundation_stacks[card.suit]
-		if len(stack) == 0 and card.value == 1:
+		if (len(stack) == 0 and card.value == 1) or stack[-1].isBelow(card):
 			stack.append(card)
-		elif stack[-1].isBelow(card):
-			stack.append(card)
+			return True
 		else:
-			print("Error! That card doesn't belong there.")
+			return False
 
 	def getTopCard(self, suit):
-		"""
-		Return the top card of a foundation pile. If the pile
-		is empty, return the letter of the suit.
-		"""
+		""" Return the top card of a foundation pile. If the pile
+			is empty, return the letter of the suit."""
 		stack = self.foundation_stacks[suit]
 		if len(stack) == 0:
 			return suit[0].upper()
@@ -188,7 +203,7 @@ def printTable(tableau, foundation, stock_waste):
 	""" Prints the current status of the table """
 	print(BREAK_STRING)
 	print("Waste \t Stock \t\t\t\t Foundation")
-	print("{}\t{}\t\t{}\t{}\t{}\t{}".format(stock_waste.showWaste(), stock_waste.showStock(), 
+	print("{}\t{}\t\t{}\t{}\t{}\t{}".format(stock_waste.getWaste(), stock_waste.getStock(), 
 		foundation.getTopCard("club"), foundation.getTopCard("heart"), 
 		foundation.getTopCard("spade"), foundation.getTopCard("diam")))
 	print("\nTableau\n\t1\t2\t3\t4\t5\t6\t7\n")
@@ -228,26 +243,32 @@ if __name__ == "__main__":
     		print("Game exited.")
     		break
     	elif command == "mv":
-    		sw.stock_to_waste()
-    		printTable(t, f, sw)
-    	elif command == "wf":
-    		if sw.showWaste() == "empty":
-    			print("Error! There's nothing in the Waste pile.")
-    		else:
-    			f.add(sw.flip_card())
+    		if sw.stock_to_waste():
     			printTable(t, f, sw)
+    	elif command == "wf":
+    		if f.addCard(sw.getWaste()):
+    			sw.flip_card()
+    			printTable(t, f, sw)
+    		else:
+    			print("Error! No card could be moved from the Waste to the Foundation.")
     	elif "wt" in command and len(command) == 3:
     		col = int(command[-1]) - 1
-    		t.waste_to_tableau(sw, col)
-    		printTable(t, f, w)
+    		if t.waste_to_tableau(sw, col):
+    			printTable(t, f, w)
+    		else:
+    			print("Error! No card could be moved from the Waste to the Tableau column.")
     	elif "tf" in command and len(command) == 3:
     		col = int(command[-1]) - 1
-    		t.tableau_to_foundation(f, col)
-    		printTable(t, f, sw)
+    		if t.tableau_to_foundation(f, col):
+    			printTable(t, f, sw)
+    		else:
+    			print("Error! No card could be moved from the Tableau column to the Foundation.")
     	elif "tt" in command and len(command) == 4:
     		c1, c2 = int(command[-2]) - 1, int(command[-1]) - 1
-    		t.tableau_to_tableau(c1, c2)
-    		printTable(t, f, sw)
+    		if t.tableau_to_tableau(c1, c2):
+    			printTable(t, f, sw)
+    		else:
+    			print("Error! No card could be moved from that Tableau column.")
     	else:
     		print("Sorry, that is not a valid command.")
 
