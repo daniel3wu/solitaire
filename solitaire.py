@@ -46,7 +46,7 @@ class Deck():
     	return str(self.deck)
 		
 class Tableau():
-	# Seven piles
+	# Class that keeps track of the seven piles of cards on the Tableau
 
 	def __init__(self, card_list):
 		self.unflipped = {x: card_list[x] for x in range(7)}
@@ -57,13 +57,15 @@ class Tableau():
 			self.flipped[col].append(self.unflipped[col].pop())
 
 	def pile_length(self):
+		""" Returns the length of the longest pile on the Tableau """
 		list_lens = [len(self.flipped[x]) + len(self.unflipped[x]) for x in range(7)]
 		return max(list_lens)
 
-	def __repr__(self):
-		return str(self.unflipped)
+	# def __repr__(self):
+	# 	return str(self.unflipped)
 
 	def tableau_to_tableau(self, c1, c2):
+		""" Swaps card(s) between piles on the Tableau """
 		pile1, pile2 = self.flipped[c1], self.flipped[c2]
 		bottom_of_pile2 = pile2[-1]
 		for index in range(len(pile1)):
@@ -77,6 +79,7 @@ class Tableau():
 		print("There are no cards that could be moved.")
 
 	def tableau_to_foundation(self, foundation, column):
+		""" Moves a card from the Tableau to the appropriate Foundation pile """
 		card_list = self.flipped[column]
 		if(len(card_list) == 0):
 			print("There are no cards in this column!")
@@ -94,8 +97,6 @@ class Tableau():
 			waste_pile.flip_card()
 		else:
 			print("The card in the waste pile cannot be moved to that column.")
-
-
 
 class StockWaste():
 	""" A StockWaste object keeps track of the Stock and Waste piles """
